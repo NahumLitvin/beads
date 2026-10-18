@@ -27,8 +27,14 @@ set -euo pipefail
 # 2.4.1 is that release. Measured 2026-10-10 the same way: 2.3.1 8/150 broken
 # (the positive control, so the method still reproduces the regression),
 # 2.4.1 0/250 over two runs, and the embedded engine via driver v2.4.1 0/60.
-# The pin must also track the driver in go.mod: storage the 2.4.1 engine
-# writes is not writable by dolt 2.2.0 or 2.3.1 ("table has unknown fields").
+# The pin must also track the driver in go.mod, so the CLI and the container
+# run the engine embedded mode links. Releases before 2.4.0 drop a join
+# condition when an ON clause has an OR over indexed columns
+# (dolthub/dolt#11886). Releases before 2.3.3 cannot read a descending index
+# column ("table has unknown fields"); migration 0071 removed the one bd's
+# schema declared, so dolt 2.1.8 and 2.2.0 read and write the current root of
+# a database the 2.4.1 engine created, but its commits from before 0071 still
+# hold it (docs/architecture/dolt.md, "Which Dolt version to install").
 readonly version="2.4.1"
 readonly max_attempts=3
 readonly retry_delay_seconds=5

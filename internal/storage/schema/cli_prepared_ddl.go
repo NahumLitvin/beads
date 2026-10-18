@@ -33,9 +33,9 @@ import (
 //	execute: ALTER COLUMN ... DROP DEFAULT, RENAME COLUMN, ADD/DROP INDEX,
 //	         ADD CONSTRAINT (FK and CHECK), CREATE INDEX, RENAME TABLE, CALL
 //
-// Flagging every prepared ALTER TABLE rather than just the first row costs one
-// justified inventory entry (0050) and buys not having to guess whether some
-// ALTER form nobody probed belongs in the first list. Prepared DML against a
+// Flagging every prepared ALTER TABLE rather than just the first row costs two
+// justified inventory entries (0050, 0071) and buys not having to guess whether
+// some ALTER form nobody probed belongs in the first list. Prepared DML against a
 // real table vanishes too, but that hazard already has an owner in
 // scripts/check-migration-hygiene.sh check E, which flags it at source rather
 // than in the bundle.
@@ -234,11 +234,13 @@ func sqlStringLiterals(text string) []string {
 // cliCompatibleMigrationSQL. That is what 0060 (gastownhall/beads#5903) and
 // 0065 needed, and neither is listed here.
 //
-// Every entry below was measured on 2026-08-21, not argued: build the bundle
-// truncated to just before migration N, snapshot information_schema, apply N's
-// frozen text on dolt 2.3.1 (where prepared DDL always executes), and diff.
-// 0065's un-overridden text moves that diff, which is what makes the empty
-// diffs for the (a) entries mean something. Redo it before adding an entry --
+// Every entry below was measured, not argued. Through 0058 that was on
+// 2026-08-21: build the bundle truncated to just before migration N, snapshot
+// information_schema, apply N's frozen text on dolt 2.3.1 (where prepared DDL
+// always executes), and diff. 0065's un-overridden text moves that diff, which
+// is what makes the empty diffs for the (a) entries mean something. 0071 was
+// measured on 2026-10-18 by building the whole bundle with dolt 2.1.8 and
+// 2.4.1 and comparing the two. Redo the measurement before adding an entry --
 // a wrong justification here is invisible to every test in this package.
 var preparedALTERSafeOnFreshBundle = map[string]string{
 	"0037_uuid_primary_keys.up.sql": "(a) Rekeys events/comments/issue_snapshots ids only where the column is still " +
@@ -262,4 +264,9 @@ var preparedALTERSafeOnFreshBundle = map[string]string{
 	"0058_heal_wisp_dependencies_split_constraints.up.sql": "(a) Re-adds wisp_dependencies' target FKs and check " +
 		"constraint only where absent; 0021 creates the table with all three. Measured: applying 0058 to the fresh " +
 		"bundle changes nothing.",
+	"0071_replace_descending_compaction_snapshots_index.up.sql": "(b) Its guards DO fire on a fresh bundle -- 0010 " +
+		"creates idx_comp_snap_issue -- but the statements are ADD INDEX and DROP INDEX, which execute through the " +
+		"CLI batch path on 2.1.8 as well as 2.4.1. Measured: the bundles those two CLIs build agree on " +
+		"compaction_snapshots -- idx_comp_snap_issue_asc with every column ascending, no idx_comp_snap_issue, and " +
+		"fk_comp_snap_issue still ON DELETE/ON UPDATE CASCADE.",
 }

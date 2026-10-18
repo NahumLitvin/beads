@@ -396,14 +396,14 @@ clone-local sidecar setting will slot between the two when the sidecar
 reader lands in contract part 2). On
 startup it probes that binary with `dolt version` and recommends
 **dolt >= 2.4.1**, matching the Dolt engine `bd` links (the v2.4.1 driver).
-Storage that engine writes is not writable by dolt older than 2.3.3, the
-first release that stores descending index columns (dolthub/dolt#11746):
-measured 2026-10-17, dolt 2.2.0 and 2.3.2 fail a plain `INSERT` into a
-database `bd init` created with `table has unknown fields`, while 2.3.3,
-2.4.0 and 2.4.1 succeed. Dolt before 2.4.0 also has a join bug that returns
-wrong results (dolthub/dolt#11886). (Earlier, the 2026-07-25 cross-version
-matrix had found that dolt < 2.0.0 cannot even *read* storage the module
-wrote.)
+Older releases have two known problems. Dolt before 2.4.0 has a join bug that
+returns wrong results (dolthub/dolt#11886). Dolt before 2.3.3 fails with
+`table has unknown fields` on a descending index column (dolthub/dolt#11746),
+which a database created by Dolt 2.3.3 or newer holds until `bd` migrates it
+to schema version 71, and keeps in its history from before that.
+[Which Dolt version to install](/architecture/dolt#which-dolt-version-to-install)
+records the dated measurements. (Earlier, the 2026-07-25 cross-version matrix
+had found that dolt < 2.0.0 cannot even *read* storage the module wrote.)
 
 This is a warning, not a hard failure — there is deliberately no hard
 version floor, so an older dolt can still be used at your own risk. To

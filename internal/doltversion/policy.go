@@ -8,14 +8,18 @@ import (
 
 // RecommendedMin is the dolt version this package recommends for managed
 // proxied-server mode. It tracks the embedded engine beads links (the
-// dolthub/driver v2.4.1 module in go.mod) because an external CLI must be able
-// to write storage that engine created: measured 2026-10-10 against a database
-// `bd init` wrote through driver v2.4.1, dolt 2.2.0 and 2.3.1 both fail a plain
-// INSERT with "table has unknown fields", and dolt 2.4.1 succeeds. The write
-// boundary itself is 2.3.3, the first release that stores descending index
-// columns (dolthub/dolt#11746); 2.4.1 is the release CI pins and measured, and
-// releases before 2.4.0 also mis-plan a join (dolthub/dolt#11886). Keep it
-// aligned with the CLI/container test pins (scripts/ci/install-dolt.sh).
+// dolthub/driver v2.4.1 module in go.mod), so the external CLI runs the same
+// Dolt as embedded mode. Two boundaries sit below it. Releases before 2.4.0
+// mis-plan a join (dolthub/dolt#11886). Releases before 2.3.3 cannot read a
+// descending index column ("table has unknown fields"; 2.3.3 is the first
+// release that stores one, dolthub/dolt#11746): migration 0010 declares one,
+// so a database a 2.3.3-or-newer engine created holds it until migration 0071
+// replaces it, and its history before 0071 keeps it. 2.4.1 is the release CI
+// pins, and the only release after 2.3.1 measured clean of the
+// CALL DOLT_RESET('--hard') regression 2.3.0 introduced (2.3.2 through 2.4.0
+// are unmeasured); docs/architecture/dolt.md ("Which Dolt version to install")
+// records the dated measurements. Keep it aligned with the CLI/container test
+// pins (scripts/ci/install-dolt.sh).
 //
 // This is deliberately a recommendation, not a hard floor (see
 // CheckRecommended): an earlier design that hard-failed startup below a
@@ -84,8 +88,13 @@ func (w *Warning) Message() string {
 		)
 	default:
 		return fmt.Sprintf(
-			"dolt %s is older than the recommended minimum %s for proxied-server mode; "+
-				"cross-reading storage written by newer dolt Go modules may fail (see gastownhall/beads doltversion package docs)",
+			"dolt %s is older than the recommended minimum %s for proxied-server mode: "+
+				"dolt 2.3.0 regressed CALL DOLT_RESET('--hard'), which fails with \"context canceled\" on some "+
+				"freshly created databases (measured on 2.3.0 and 2.3.1; 2.3.2 through 2.4.0 are unmeasured, "+
+				"and 2.4.1 measured clean), dolt before 2.4.0 can return wrong join results (dolthub/dolt#11886), "+
+				"and dolt before 2.3.3 fails with \"table has unknown fields\" on a descending index, which a "+
+				"database created by dolt 2.3.3 or newer holds until a bd schema migration replaces it, and "+
+				"keeps in its history (see gastownhall/beads doltversion package docs)",
 			w.Probed, w.Recommended,
 		)
 	}

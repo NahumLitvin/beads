@@ -51,11 +51,29 @@ the criterion for raising it; raise the pin here and in that script together.
 This pin is about the standalone `dolt` CLI, which only server and
 proxied-server mode use. Embedded mode is unaffected either way: it links the
 Dolt engine into `bd` through the v2.4.1 driver in `go.mod`, no matter which
-`dolt` CLI is on your PATH. Server and proxied-server mode do care: storage the
-v2.4.1 engine writes is not writable by dolt older than 2.3.3, the first
-release that stores descending index columns (dolthub/dolt#11746; a plain
-`INSERT` fails with `table has unknown fields`), so the CLI pin tracks the
-driver.
+`dolt` CLI is on your PATH. The CLI pin tracks that driver, so every mode runs
+the same engine.
+
+Dolt 2.3.3 is the first release that stores a descending index column as
+descending (dolthub/dolt#11746), and older releases cannot read a table that
+holds one: even a plain `INSERT` fails with `table has unknown fields`. The
+beads schema declared one such column until schema version 71, which replaces
+it with an ascending index. Measured against databases the v2.4.1 engine
+created before version 71: on 2026-10-10, dolt 2.2.0 and 2.3.1 failed that
+`INSERT` and 2.4.1 succeeded; on 2026-10-17, 2.2.0 and 2.3.2 failed and 2.3.3,
+2.4.0 and 2.4.1 succeeded. On 2026-10-18, dolt 2.1.8 and 2.2.0 read, wrote,
+pushed, cloned and pulled a database `bd init` had migrated to version 71.
+
+History is the exception. `bd init` commits each schema migration separately,
+so on a database a Dolt 2.3.3 or newer engine created, embedded mode
+included, the commits from before version 71 still hold the descending
+column. Dolt older than 2.3.3 fails to read `compaction_snapshots` at those
+commits (an `AS OF` query, `dolt_history_compaction_snapshots`,
+`dolt_diff_compaction_snapshots`) and fails any `dolt diff` with one of them
+as an endpoint, even a diff of another table. Other tables' `AS OF` and
+`dolt_history_` reads work. Dolt before 2.4.0 also has a join bug that
+returns wrong results (dolthub/dolt#11886). Both are reasons to install the
+pin rather than an older release.
 
 Dolt 2.3.0 (released 2026-08-13) regressed `CALL DOLT_RESET('--hard')`. A few
 percent of freshly created databases come up with that procedure unusable —
@@ -77,9 +95,10 @@ Measured by creating fresh databases and immediately calling the procedure:
 
 The 2026-10-10 runs re-measured 2.3.1 as a positive control, confirming the
 method still reproduces the regression; the embedded engine through the
-v2.4.1 driver measured 0 / 60. No other release after 2.3.1 has been
-measured here. Raise the pin only once a newer release is confirmed clean by
-that same measurement — not because it is newer.
+v2.4.1 driver measured 0 / 60. 2.4.1 is the only release after 2.3.1
+measured this way; 2.3.2, 2.3.3 and 2.4.0 have not been. Raise the pin only
+once a newer release is confirmed clean by that same measurement — not
+because it is newer.
 
 Pin rather than track `latest` for a second, independent reason: the upstream
 `releases/latest` URL resolves to the most recently *created* release, not the

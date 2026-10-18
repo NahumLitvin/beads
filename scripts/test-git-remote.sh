@@ -8,7 +8,14 @@
 #   ./scripts/test-git-remote.sh              # Local bare git repo (default)
 #   ./scripts/test-git-remote.sh <github-url> # Push to real GitHub repo
 #
-# Requirements: bd, dolt (>= 2.2.0), git
+# Requirements: bd, dolt (>= 2.2.0; 2.4.1, the pinned release, recommended), git
+#
+# 2.2.0 is enough even when bd links the Dolt 2.4.1 engine: migration 0071
+# replaced the descending index column Dolt older than 2.3.3 cannot read, and
+# push, clone, pull and reads at the current root never decode the older
+# commits that still hold it. Measured 2026-10-18: dolt 2.2.0 writes, pushes,
+# clones and pulls a database `bd init` migrated to schema version 71; with
+# 0071 reverted it fails with "table has unknown fields".
 #
 # The script is self-contained: creates temp dirs, cleans up on exit.
 

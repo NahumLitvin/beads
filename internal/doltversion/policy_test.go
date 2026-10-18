@@ -31,6 +31,21 @@ func TestWarningMessage(t *testing.T) {
 	old := &Warning{kind: warningOldVersion, Probed: MustParse("1.52.1"), Recommended: RecommendedMin}
 	if msg := old.Message(); msg == "" {
 		t.Error("Message() for old-version warning is empty")
+	} else {
+		// The advisory names what goes wrong below the recommendation, not just
+		// that something may: the DOLT_RESET('--hard') regression measured on
+		// 2.3.0 and 2.3.1 (with 2.3.2 through 2.4.0 unmeasured), the join
+		// mis-plan before 2.4.0 and the descending-index read failure before
+		// 2.3.3.
+		for _, want := range []string{
+			"1.52.1", RecommendedMin.String(),
+			"DOLT_RESET('--hard')", "2.3.0 and 2.3.1", "2.3.2 through 2.4.0 are unmeasured",
+			"2.4.0", "dolthub/dolt#11886", "2.3.3", "table has unknown fields",
+		} {
+			if !strings.Contains(msg, want) {
+				t.Errorf("Message() = %q, want it to mention %q", msg, want)
+			}
+		}
 	}
 
 	unverifiable := &Warning{kind: warningUnverifiable, RawOutput: "garbage output"}
